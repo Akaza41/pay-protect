@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
 // ════════════════════════════════════════════════════════════════
@@ -102,7 +102,45 @@ export default function ShopkeeperDashboard() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedCustomer, setSelectedCustomer] = useState<typeof CUSTOMERS[0] | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [isResizing, setIsResizing] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" | "info" } | null>(null);
+
+  // ── Resizing Logic
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback(
+    (e: MouseEvent) => {
+      if (isResizing) {
+        const newWidth = e.clientX;
+        if (newWidth > 160 && newWidth < 480) {
+          setSidebarWidth(newWidth);
+        }
+      }
+    },
+    [isResizing]
+  );
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener("mousemove", resize);
+      window.addEventListener("mouseup", stopResizing);
+    } else {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    }
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    };
+  }, [isResizing, resize, stopResizing]);
 
   // ── Show toast helper
   const showToast = (msg: string, type: "success" | "error" | "info" = "success") => {
@@ -156,9 +194,12 @@ export default function ShopkeeperDashboard() {
           ██  SIDEBAR
           ════════════════════════════════════════════════════ */}
       <motion.aside
-        animate={{ width: sidebarOpen ? 220 : 64 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-20 flex-shrink-0 bg-[#060d1a] border-r border-blue-500/10 flex flex-col h-screen sticky top-0 overflow-hidden"
+        animate={{ width: sidebarOpen ? sidebarWidth : 64 }}
+        transition={{ 
+          duration: isResizing ? 0 : 0.3, 
+          ease: [0.22, 1, 0.36, 1] 
+        }}
+        className="relative z-20 flex-shrink-0 bg-[#060d1a] border-r border-blue-500/10 flex flex-col h-screen sticky top-0"
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-4 border-b border-blue-500/10 flex-shrink-0">
@@ -210,6 +251,18 @@ export default function ShopkeeperDashboard() {
             {sidebarOpen ? <polyline points="15 18 9 12 15 6" /> : <polyline points="9 18 15 12 9 6" />}
           </svg>
         </button>
+
+        {/* Resize Handle */}
+        {sidebarOpen && (
+          <div
+            onMouseDown={startResizing}
+            className={`absolute top-0 right-0 w-1.5 h-full cursor-col-resize transition-colors z-50 group/resize ${
+              isResizing ? "bg-blue-500/40" : "hover:bg-blue-500/20"
+            }`}
+          >
+            <div className={`absolute top-1/2 right-0.5 -translate-y-1/2 w-0.5 h-8 rounded-full bg-blue-500/20 group-hover/resize:bg-blue-500/40 transition-colors ${isResizing ? "bg-blue-500/60" : ""}`} />
+          </div>
+        )}
       </motion.aside>
 
       {/* ════════════════════════════════════════════════════════
